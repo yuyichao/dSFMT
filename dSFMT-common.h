@@ -35,6 +35,14 @@ union X128D_T {
 };
 /** mask data for sse2 */
 static const union X128I_T sse2_param_mask = {{DSFMT_MSK1, DSFMT_MSK2}};
+#elif defined(__aarch64__)
+#  include <arm_neon.h>
+union X128I_T {
+    uint64_t u[2];
+    uint64x2_t ux2;
+};
+/** mask data for asimd */
+static const union X128I_T asimd_param_mask = {{DSFMT_MSK1, DSFMT_MSK2}};
 #endif
 
 #if defined(HAVE_ALTIVEC)
@@ -88,6 +96,29 @@ inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b, w128_t *u) {
     v = _mm_xor_si128(v, x);
     v = _mm_xor_si128(v, w);
     r->si = v;
+    u->si = y;
+}
+#elif defined(__aarch64__)
+/**
+ * This function represents the recursion formula.
+ * @param r output 128-bit
+ * @param a a 128-bit part of the internal state array
+ * @param b a 128-bit part of the internal state array
+ * @param u a 128-bit part of the internal state array (I/O)
+ */
+inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b, w128_t *u) {
+    uint64x2_t x = a->si;
+    uint64x2_t z = vshlq_n_u64(x, DSFMT_SL1);
+    uint32x4_t y32 = vreinterpretq_u32_u64(u->si);
+    y32 = __builtin_shuffle(y32, (uint32x4_t){3, 2, 1, 0});
+    uint64x2_t y = vreinterpretq_u64_u32(y32);
+    z = veorq_u64(z, b->si);
+    y = veorq_u64(y, z);
+
+    uint64x2_t v = vshrq_n_u64(y, DSFMT_SR);
+    uint64x2_t w = vandq_u64(y, asimd_param_mask.ux2);
+    v = veorq_u64(v, x);
+    r->si = veorq_u64(v, w);
     u->si = y;
 }
 #else
