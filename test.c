@@ -4,7 +4,7 @@
 #include <time.h>
 #include <string.h>
 #define DSFMT_DO_NOT_USE_OLD_NAMES
-#include "dSFMT.h"
+#include "dSFMT.h.orig"
 
 #define NUM_RANDS 50000
 #define TIC_MAG 1
